@@ -1,0 +1,195 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 1' # weekly run catches drift in emulators and runner images
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-test:
+    # Same code, same tests, two runtimes: proves the net8.0 -> net10.0 upgrade changed nothing.
+    name: Build & test (${{ matrix.tfm }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        tfm: [net8.0, net10.0]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          # The 10.0 SDK (selected by global.json) builds both targets; 8.0 provides the net8.0 runtime.
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Tool versions
+        run: |
+          dotnet --info | head -n 20
+          php --version
+
+      - name: Start Azurite (Azure Storage emulator)
+        run: >
+          docker run -d --name azurite -p 10000:10000 -p 10001:10001 -p 10002:10002
+          mcr.microsoft.com/azure-storage/azurite
+          azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose
+
+      - name: Restore
+        run: dotnet restore AzureDotnetMigration.slnx
+
+      - name: Build (incl. Azure Functions isolated worker)
+        run: dotnet build AzureDotnetMigration.slnx -c Release
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/Orders.UnitTests -c Release --no-build -f ${{ matrix.tfm }}
+          --logger "trx;LogFileName=unit-${{ matrix.tfm }}.trx" --results-directory TestResults
+
+      - name: Integration tests (in-process API + Azurite)
+        run: >
+          dotnet test tests/Orders.IntegrationTests -c Release --no-build -f ${{ matrix.tfm }}
+          --filter "Category!=ServiceBusEmulator"
+          --logger "trx;LogFileName=integration-${{ matrix.tfm }}.trx" --results-directory TestResults
+
+      - name: Start legacy PHP API (:8080) and .NET API on ${{ matrix.tfm }} (:5080)
+        run: |
+          ENABLE_TEST_ENDPOINTS=true ORDERS_DATA_FILE="$RUNNER_TEMP/legacy-orders.json" \
+            nohup php -S 127.0.0.1:8080 legacy-php/public/index.php > "$RUNNER_TEMP/php.log" 2>&1 &
+          cd src/Orders.Api/bin/Release/${{ matrix.tfm }}
+          EnableTestEndpoints=true ASPNETCORE_URLS=http://127.0.0.1:5080 \
+            nohup dotnet Orders.Api.dll > "$RUNNER_TEMP/api.log" 2>&1 &
+          for url in http://127.0.0.1:8080/health http://127.0.0.1:5080/health; do
+            for i in $(seq 1 60); do curl -sf "$url" > /dev/null && break; sleep 1; done
+            curl -sf "$url" || { echo "::error::$url did not start"; cat "$RUNNER_TEMP"/*.log; exit 1; }
+            echo " <- $url"
+          done
+
+      - name: Parity tests (golden contracts + Reqnroll BDD)
+        run: >
+          dotnet test tests/Orders.ParityTests -c Release --no-build
+          --logger "trx;LogFileName=parity-${{ matrix.tfm }}.trx" --results-directory TestResults
+
+      - name: API logs
+        if: failure()
+        run: cat "$RUNNER_TEMP/php.log" "$RUNNER_TEMP/api.log" || true
+
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-${{ matrix.tfm }}
+          path: TestResults/*.trx
+          retention-days: 14
+
+  servicebus-emulator:
+    # The official emulator needs a SQL Server container and ~1 minute to start. It is run as a
+    # separate best-effort job so an emulator outage never blocks the main pipeline.
+    name: Service Bus emulator (best effort)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Start Azurite + SQL Server + Service Bus emulator
+        run: |
+          export ACCEPT_EULA=Y
+          export MSSQL_SA_PASSWORD="Ci-$(openssl rand -hex 12)-Aa1!"
+          docker compose --profile servicebus up -d azurite mssql servicebus-emulator
+          for i in $(seq 1 90); do
+            curl -sf http://localhost:5300/health > /dev/null && echo "emulator ready after ${i}x2s" && exit 0
+            sleep 2
+          done
+          docker compose --profile servicebus logs servicebus-emulator
+          exit 1
+
+      - name: Service Bus -> Function logic -> Blob/Queue tests
+        run: >
+          dotnet test tests/Orders.IntegrationTests -c Release -f net10.0
+          --filter "Category=ServiceBusEmulator"
+          --logger "trx;LogFileName=servicebus-net10.0.trx" --results-directory TestResults
+
+      - name: Emulator logs
+        if: failure()
+        run: docker compose --profile servicebus logs servicebus-emulator mssql || true
+
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-servicebus
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  infra:
+    name: Bicep build + APIM policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile Bicep (not deployed)
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
+      - name: APIM policy is well-formed XML
+        run: python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('infra/apim/orders-api-policy.xml'); print('ok')"
+
+  report:
+    name: HTML test report
+    needs: [build-test, servicebus-emulator]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: test-results-*
+          path: results
+
+      - name: Build report
+        run: python3 tools/trx_to_html.py results site
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: html-report
+          path: site/
+          retention-days: 14
+
+      - if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/
+
+  publish-report:
+    name: Publish live test report
+    needs: report
+    if: ${{ !cancelled() && needs.report.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

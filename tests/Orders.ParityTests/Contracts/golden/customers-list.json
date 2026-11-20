@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "name": "Asha Rao",
+      "email": "asha.rao@example.com",
+      "tier": "gold"
+    },
+    {
+      "id": 2,
+      "name": "Ben Carter",
+      "email": "ben.carter@example.com",
+      "tier": "silver"
+    },
+    {
+      "id": 3,
+      "name": "Chen Wei",
+      "email": "chen.wei@example.com",
+      "tier": "standard"
+    }
+  ]
+}

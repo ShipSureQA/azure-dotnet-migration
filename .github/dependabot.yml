@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      azure-sdk:
+        patterns: ["Azure.*", "Microsoft.Azure.Functions.*"]
+      test-tooling:
+        patterns: ["xunit*", "Reqnroll*", "Microsoft.NET.Test.Sdk"]
+    ignore:
+      # Framework-aligned: 8.0.x and 10.0.x lines are pinned per target framework.
+      - dependency-name: "Microsoft.AspNetCore.Mvc.Testing"
+        update-types: ["version-update:semver-major"]
+      # xUnit v3 is a separate package family (xunit.v3); migrate deliberately.
+      - dependency-name: "xunit"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

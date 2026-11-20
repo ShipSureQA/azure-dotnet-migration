@@ -1,0 +1,22 @@
+{
+  "status": 201,
+  "headers": {
+    "Location": "/api/orders/1004"
+  },
+  "body": {
+    "id": 1004,
+    "customerId": 2,
+    "status": "pending",
+    "lines": [
+      {
+        "sku": "MS-777",
+        "quantity": 2,
+        "unitPrice": 26.65
+      }
+    ],
+    "subtotal": 53.3,
+    "discount": 2.67,
+    "total": 50.63,
+    "createdAt": "<timestamp>"
+  }
+}

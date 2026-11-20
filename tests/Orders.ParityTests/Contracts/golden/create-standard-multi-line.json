@@ -1,0 +1,27 @@
+{
+  "status": 201,
+  "headers": {
+    "Location": "/api/orders/1004"
+  },
+  "body": {
+    "id": 1004,
+    "customerId": 3,
+    "status": "pending",
+    "lines": [
+      {
+        "sku": "CB-100",
+        "quantity": 4,
+        "unitPrice": 7.25
+      },
+      {
+        "sku": "HD-010",
+        "quantity": 1,
+        "unitPrice": 120
+      }
+    ],
+    "subtotal": 149,
+    "discount": 0,
+    "total": 149,
+    "createdAt": "<timestamp>"
+  }
+}

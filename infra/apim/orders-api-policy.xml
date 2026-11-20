@@ -1,0 +1,49 @@
+<policies>
+  <!--
+    API-level policy for the Orders API in Azure API Management.
+    Deployed by infra/main.bicep (loadTextContent). Validated by tests/Orders.UnitTests/ApimPolicyTests.cs.
+    {{entra-tenant-id}} is an APIM named value created by the Bicep template.
+  -->
+  <inbound>
+    <base />
+    <!-- 1. Throttle each subscription: 100 calls per 60 seconds. -->
+    <rate-limit-by-key calls="100" renewal-period="60" counter-key="@(context.Subscription?.Key ?? context.Request.IpAddress)" increment-condition="@(context.Response.StatusCode &lt; 500)" />
+    <!-- 2. Require a valid Entra ID access token. -->
+    <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized: missing or invalid access token" require-scheme="Bearer">
+      <openid-config url="https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0/.well-known/openid-configuration" />
+      <audiences>
+        <audience>api://orders-api</audience>
+      </audiences>
+      <required-claims>
+        <claim name="roles" match="any">
+          <value>Orders.Read</value>
+          <value>Orders.Write</value>
+        </claim>
+      </required-claims>
+    </validate-jwt>
+    <!-- 3. Correlation id for end-to-end tracing in Application Insights. -->
+    <set-header name="X-Correlation-Id" exists-action="skip">
+      <value>@(context.RequestId.ToString())</value>
+    </set-header>
+    <!-- The backend must not trust a caller-supplied identity header. -->
+    <set-header name="X-Forwarded-User" exists-action="delete" />
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+    <!-- Remove server fingerprints (the legacy PHP app leaked X-Powered-By). -->
+    <set-header name="X-Powered-By" exists-action="delete" />
+    <set-header name="Server" exists-action="delete" />
+    <set-header name="X-Correlation-Id" exists-action="override">
+      <value>@(context.RequestId.ToString())</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <set-header name="X-Correlation-Id" exists-action="override">
+      <value>@(context.RequestId.ToString())</value>
+    </set-header>
+  </on-error>
+</policies>

@@ -1,0 +1,50 @@
+[
+  { "name": "health", "method": "GET", "path": "/health" },
+  { "name": "customers-list", "method": "GET", "path": "/api/customers" },
+  { "name": "customer-by-id", "method": "GET", "path": "/api/customers/1" },
+  { "name": "customer-not-found", "method": "GET", "path": "/api/customers/99" },
+  { "name": "orders-list", "method": "GET", "path": "/api/orders" },
+  { "name": "orders-by-customer", "method": "GET", "path": "/api/orders?customerId=1" },
+  { "name": "orders-by-status", "method": "GET", "path": "/api/orders?status=pending" },
+  { "name": "orders-by-customer-and-status", "method": "GET", "path": "/api/orders?customerId=1&status=shipped" },
+  { "name": "orders-filter-no-match", "method": "GET", "path": "/api/orders?customerId=3" },
+  { "name": "orders-bad-customer-filter", "method": "GET", "path": "/api/orders?customerId=abc" },
+  { "name": "orders-bad-status-filter", "method": "GET", "path": "/api/orders?status=lost" },
+  { "name": "order-by-id", "method": "GET", "path": "/api/orders/1001" },
+  { "name": "order-not-found", "method": "GET", "path": "/api/orders/4040" },
+  { "name": "order-non-numeric-id", "method": "GET", "path": "/api/orders/abc" },
+  { "name": "unknown-route", "method": "GET", "path": "/api/unknown" },
+  {
+    "name": "create-gold-discount", "method": "POST", "path": "/api/orders",
+    "body": "{\"customerId\":1,\"lines\":[{\"sku\":\"KB-001\",\"quantity\":2,\"unitPrice\":49.5}]}",
+    "volatile": ["createdAt"], "headers": ["Location"]
+  },
+  {
+    "name": "create-silver-midpoint-rounding", "method": "POST", "path": "/api/orders",
+    "body": "{\"customerId\":2,\"lines\":[{\"sku\":\"MS-777\",\"quantity\":2,\"unitPrice\":26.65}]}",
+    "volatile": ["createdAt"], "headers": ["Location"]
+  },
+  {
+    "name": "create-standard-multi-line", "method": "POST", "path": "/api/orders",
+    "body": "{\"customerId\":3,\"lines\":[{\"sku\":\"CB-100\",\"quantity\":4,\"unitPrice\":7.25},{\"sku\":\"HD-010\",\"quantity\":1,\"unitPrice\":120}]}",
+    "volatile": ["createdAt"], "headers": ["Location"]
+  },
+  { "name": "create-invalid-json", "method": "POST", "path": "/api/orders", "body": "{not json" },
+  { "name": "create-empty-body", "method": "POST", "path": "/api/orders", "body": "" },
+  { "name": "create-array-body", "method": "POST", "path": "/api/orders", "body": "[]" },
+  { "name": "create-missing-customer-id", "method": "POST", "path": "/api/orders", "body": "{\"lines\":[{\"sku\":\"A\",\"quantity\":1,\"unitPrice\":1}]}" },
+  { "name": "create-string-customer-id", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":\"1\",\"lines\":[{\"sku\":\"A\",\"quantity\":1,\"unitPrice\":1}]}" },
+  { "name": "create-empty-lines", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":1,\"lines\":[]}" },
+  { "name": "create-missing-sku", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":1,\"lines\":[{\"quantity\":1,\"unitPrice\":1}]}" },
+  { "name": "create-zero-quantity", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":1,\"lines\":[{\"sku\":\"A\",\"quantity\":0,\"unitPrice\":1}]}" },
+  { "name": "create-fractional-quantity", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":1,\"lines\":[{\"sku\":\"A\",\"quantity\":1.5,\"unitPrice\":1}]}" },
+  { "name": "create-negative-price", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":1,\"lines\":[{\"sku\":\"A\",\"quantity\":1,\"unitPrice\":-5}]}" },
+  { "name": "create-second-line-invalid", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":1,\"lines\":[{\"sku\":\"A\",\"quantity\":1,\"unitPrice\":1},{\"sku\":\"\",\"quantity\":1,\"unitPrice\":1}]}" },
+  { "name": "create-unknown-customer", "method": "POST", "path": "/api/orders", "body": "{\"customerId\":99,\"lines\":[{\"sku\":\"A\",\"quantity\":1,\"unitPrice\":1}]}" },
+  { "name": "status-pending-to-paid", "method": "PATCH", "path": "/api/orders/1002/status", "body": "{\"status\":\"paid\"}" },
+  { "name": "status-paid-to-cancelled", "method": "PATCH", "path": "/api/orders/1001/status", "body": "{\"status\":\"cancelled\"}" },
+  { "name": "status-invalid-transition", "method": "PATCH", "path": "/api/orders/1003/status", "body": "{\"status\":\"paid\"}" },
+  { "name": "status-invalid-value", "method": "PATCH", "path": "/api/orders/1002/status", "body": "{\"status\":\"lost\"}" },
+  { "name": "status-invalid-json", "method": "PATCH", "path": "/api/orders/1002/status", "body": "oops" },
+  { "name": "status-order-not-found", "method": "PATCH", "path": "/api/orders/9999/status", "body": "{\"status\":\"paid\"}" }
+]

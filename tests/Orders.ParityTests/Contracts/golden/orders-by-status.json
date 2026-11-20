@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": 1002,
+      "customerId": 2,
+      "status": "pending",
+      "lines": [
+        {
+          "sku": "HD-010",
+          "quantity": 1,
+          "unitPrice": 120
+        }
+      ],
+      "subtotal": 120,
+      "discount": 6,
+      "total": 114,
+      "createdAt": "2026-10-03T14:02:00Z"
+    }
+  ]
+}

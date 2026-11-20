@@ -1,0 +1,6 @@
+{
+  "status": 400,
+  "body": {
+    "error": "Line 2: sku is required"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": 1003,
+      "customerId": 1,
+      "status": "shipped",
+      "lines": [
+        {
+          "sku": "CB-100",
+          "quantity": 3,
+          "unitPrice": 7.25
+        }
+      ],
+      "subtotal": 21.75,
+      "discount": 2.18,
+      "total": 19.57,
+      "createdAt": "2026-10-05T11:40:00Z"
+    }
+  ]
+}

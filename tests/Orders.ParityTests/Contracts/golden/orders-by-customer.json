@@ -1,0 +1,42 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": 1001,
+      "customerId": 1,
+      "status": "paid",
+      "lines": [
+        {
+          "sku": "KB-001",
+          "quantity": 1,
+          "unitPrice": 49.5
+        },
+        {
+          "sku": "MS-002",
+          "quantity": 2,
+          "unitPrice": 19.99
+        }
+      ],
+      "subtotal": 89.48,
+      "discount": 8.95,
+      "total": 80.53,
+      "createdAt": "2026-10-01T09:15:00Z"
+    },
+    {
+      "id": 1003,
+      "customerId": 1,
+      "status": "shipped",
+      "lines": [
+        {
+          "sku": "CB-100",
+          "quantity": 3,
+          "unitPrice": 7.25
+        }
+      ],
+      "subtotal": 21.75,
+      "discount": 2.18,
+      "total": 19.57,
+      "createdAt": "2026-10-05T11:40:00Z"
+    }
+  ]
+}

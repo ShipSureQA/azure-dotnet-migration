@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(OrdersTargetFrameworks)</TargetFrameworks>
+    <RootNamespace>Orders.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The same seed file feeds the legacy PHP API and the .NET port. -->
+    <EmbeddedResource Include="..\..\data\seed.json" LogicalName="Orders.Core.seed.json" />
+  </ItemGroup>
+</Project>

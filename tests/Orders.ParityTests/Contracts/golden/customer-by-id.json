@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "body": {
+    "id": 1,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "tier": "gold"
+  }
+}
